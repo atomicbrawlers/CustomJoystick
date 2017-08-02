@@ -1,11 +1,36 @@
 package com.atomicbrawlers.customjoystick;
 
 import android.content.Context;
+import android.content.res.TypedArray;
+import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
 
+import static android.R.attr.direction;
+
 /**
  * Created by Matt on 7/31/2017.
+ */
+
+/* JAVADOC EXAMPLE
+ * Returns an Image object that can then be painted on the screen.
+ * The url argument must specify an absolute {@link URL}. The name
+ * argument is a specifier that is relative to the url argument.
+ * <p>
+ * This method always returns immediately, whether or not the
+ * image exists. When this applet attempts to draw the image on
+ * the screen, the data will be loaded. The graphics primitives
+ * that draw the image will incrementally paint on the screen.
+ *
+ * @param  url  an absolute URL giving the base location of the image
+ * @param  name the location of the image, relative to the url argument
+ * @return      the image at the specified URL
+ * @see         Image
+ */
+
+/**
+ * Custom Joystick View
+ * @author Matthew Jordan
  */
 
 public class JoystickView extends View /*implements Runnable*/{
@@ -15,7 +40,7 @@ public class JoystickView extends View /*implements Runnable*/{
      *      layout_width and layout_height to the same value
      * canvasPadding - The size of the padding around the painted object; the edge of the
      *      layout/view will be this far away from the edge of the painted object
-     * backgroundColor - The color of the background
+     * backgroundColor - The color of the background; TODO: Check if I can use the default android implementation of this
      * borderColor - The color of the border of the background
      * borderSize - The size/amount that the border sticks out over the background
      * thumbstickRadius - The radius of the thumbstick; the object that the user moves around
@@ -44,64 +69,303 @@ public class JoystickView extends View /*implements Runnable*/{
      *      thread.sleep(); do more research
      */
 
-    /* VARIABLES
-     * mLayoutSize
-     * mCanvasPadding
-     * mBackgroundColor
-     * mBorderColor
-     * mBorderSize
-     * mThumbstickRadius
-     * mAutoRecenterThumbstick
-     * mAutoRecenterDelay
-     * mPhysicalThreshold
-     * mGiveThreshold
-     * mEnabled - MAYBE
-     * mDoubleTapToPress
-     * mDoubleTapDelay
-     * mDoubleTapError
-     * mRefreshRate
-     *
-     * DEFAULT_LAYOUT_SIZE
-     * DEFAULT_CANVAS_PADDING
-     * DEFAULT_BACKGROUND_COLOR
-     * DEFAULT_BORDER_COLOR
-     * DEFAULT_BORDER_SIZE
-     * DEFAULT_THUMBSTICK_RADIUS
-     * DEFAULT_AUTO_RECENTER_THUMBSTICK
-     * DEFAULT_AUTO_RECENTER_DELAY
-     * DEFAULT_PHYSICAL_THRESHOLD
-     * DEFAULT_GIVE_THRESHOLD
-     * DEFAULT_ENABLED
-     * DEFAULT_DOUBLE_TAP_TO_PRESS
-     * DEFAULT_DOUBLE_TAP_DELAY
-     * DEFAULT_DOUBLE_TAP_ERROR
-     * DEFAULT_REFRESH_RATE
-     * CLOCKWISE = true;
-     *
-     * xPos
-     * yPos
-     * distanceFromCenter - acts as "strength" in a sense; useful for diagonal movements
-     * angle
-     */
-
     /* ADDITIONAL CONSIDERATIONS
      * Default starting pos option - would require getter and multiple position setters
      */
 
+    /*
+     CONSTANTS
+     */
+
+    //TODO: Determine what the default values will be
+
+    /**
+     * Default layout size
+     */
+    private final int DEFAULT_LAYOUT_SIZE = 200;
+
+    /**
+     * Default canvas padding size
+     */
+    private final int DEFAULT_CANVAS_PADDING = 10;
+
+    /**
+     * Default background color
+     */
+    private final int DEFAULT_BACKGROUND_COLOR = 0;
+
+    /**
+     * Default border color
+     */
+    private final int DEFAULT_BORDER_COLOR = 0;
+
+    /**
+     * Default border size
+     */
+    private final int DEFAULT_BORDER_SIZE = 10;
+
+    /**
+     * Default thumbstick radius
+     */
+    private final int DEFAULT_THUMBSTICK_RADIUS = 30;
+
+    /**
+     * Default state for automatically recentering thumbstick
+     */
+    private final boolean DEFAULT_AUTO_RECENTER_THUMBSTICK = true;
+
+    /**
+     * Default auto recenter delay time
+     */
+    private final int DEFAULT_AUTO_RECENTER_DELAY = 10;
+
+    /**
+     * Default physical threshold value
+     */
+    private final int DEFAULT_PHYSICAL_THRESHOLD = 20;
+
+    /**
+     * Default give threshold value
+     */
+    private final int DEFAULT_GIVE_THRESHOLD = 5;
+
+    /**
+     * Default enabled state
+     */
+    private final boolean DEFAULT_ENABLED = true;
+
+    /**
+     * Default state for double tap option
+     */
+    private final boolean DEFAULT_DOUBLE_TAP_TO_PRESS = false;
+
+    /**
+     * Default double tap delay time
+     */
+    private final int DEFAULT_DOUBLE_TAP_DELAY = 200; //milliseconds
+
+    /**
+     * Default double tap error time
+     */
+    private final int DEFAULT_DOUBLE_TAP_ERROR = 50; //milliseconds
+
+    /**
+     * Default refresh rate time
+     */
+    private final int DEFAULT_REFRESH_RATE = 20; //milliseconds
+
+    /*
+    SETTINGS VARIABLES
+     */
+
+    /**
+     * Size of layout.<!-- --> Layout is square so this represents both the width and height
+     */
+    private int mLayoutSize;
+
+    /**
+     * Size in pixels of how far apart the edge of the painted object and layout will be
+     */
+    private int mCanvasPadding;
+
+    /**
+     * Color of the joystick background
+     */
+    private int mBackgroundColor;
+
+    /**
+     * Color of the joystick border
+     */
+    private int mBorderColor;
+
+    /**
+     * Size in pixels of the border around the background.<!-- --> The border is drawn inward
+     * from the edge of the background.
+     */
+    private int mBorderSize;
+
+    /**
+     * Radius in pixels of the thumbstick
+     */
+    private int mThumbstickRadius;
+
+    /**
+     * State for whether or not to automatically recenter thumbstick upon not being touched
+     */
+    private boolean mAutoRecenterThumbstick;
+
+    /**
+     * Delay in milliseconds before the thumbstick is automatically recentered
+     */
+    private int mAutoRecenterDelay;
+
+    /**
+     * Value from 0-100 representing the percentage the thumbstick must be
+     * pressed before the value output from the joystick will affect the object being
+     * controlled.
+     * <p>
+     * The purpose of this is to eliminate the need to account for the error that a
+     * real-life thumbstick has in the form of "bounce-back." </p>
+     * <p>
+     * For example, if you are using the
+     * joystick to run a motor, and the motor doesn't start to turn until 30%, you would set
+     * the threshold to 30 and when the joystick moves it will start at a value of 30.
+     * </p>
+     */
+    private int mPhysicalThreshold;
+
+    /**
+     * Value from 0-100 representing the percentage the thumbstick must be pressed
+     * before the joystick values increases above 0.
+     * <p>
+     * Think of it as the amount you have to "inch up" with your finger before the object
+     * being controlled starts to move.
+     * </p>
+     */
+    private int mGiveThreshold;
+
+    /**
+     * State for whether or not the joystick is interact-able (enabled)
+     */
+    private boolean mEnabled; //MAYBE
+
+    /**
+     * State for whether or not the user can double tap the joystick to act a button press
+     */
+    private boolean mDoubleTapToPress;
+
+    /**
+     * Value in milliseconds the user has to tap a second time in order to register a double tap
+     */
+    private int mDoubleTapDelay;
+
+    /**
+     * Value in milliseconds, the program will wait before looking for a second tap.
+     * <p>
+     * <em>MUST BE LESS THAN</em> doubleTapDelay or will default to 10 less than the default value
+     */
+    private int mDoubleTapError;
+
+    /**
+     * Value in milliseconds representing the refresh rate of the joystick object
+     */
+    private int mRefreshRate;
+
+    /*
+     LOCAL VARIABLES
+     */
+
+    /**
+     * Value of the x-axis position of the thumbstick
+     */
+    private int xPos;
+
+    /**
+     * Value of the y-axis position of the thumbstick
+     */
+    private int yPos;
+
+    /**
+     * How from the the center the thumbstick is
+     */
+    private int distanceFromCenter; //acts as "strength" in a sense; useful for diagonal movements
+
+    /**
+     * Angle of the thumbstick.<!-- --> Positive x-axis is zero.<!-- --> Default angle is
+     * referenced clockwise.
+     */
+    private int angle;
+
+    /*
+     DRAWING VARIABLES
+     Used to draw the image of the joystick
+     */
+    private Paint mPaintBackground;
+    private Paint mPaintBorder;
+    private Paint mPaintThumbstick;
+
     public JoystickView(Context context, AttributeSet attrs) {
         super(context, attrs);
 
+        //TODO: Figure out how to upgrade API if you want to use this
+        //Overlapping rendering is for when a canvas is rendered opaquely on top of another canvas
+        //this.forceHasOverlappingRendering(false); //Saves processing power
+
+        //paint objects for drawing in onDraw
+        mPaintBackground = new Paint();
+        mPaintBorder     = new Paint();
+        mPaintThumbstick = new Paint();
+
+        //get the attributes specified in attrs.xml
+        TypedArray styledAttributes = context.getTheme().obtainStyledAttributes(attrs,
+                R.styleable.JoystickView, 0, 0);
+
+        try { //get attributes specified in attrs.xml
+            mLayoutSize             = styledAttributes.getDimensionPixelSize(R.styleable.JoystickView_layoutSize,       DEFAULT_LAYOUT_SIZE);
+            mCanvasPadding          = styledAttributes.getDimensionPixelSize(R.styleable.JoystickView_canvasPadding,    DEFAULT_CANVAS_PADDING);
+            mBorderSize             = styledAttributes.getDimensionPixelSize(R.styleable.JoystickView_borderSize,       DEFAULT_BORDER_SIZE);
+            mThumbstickRadius       = styledAttributes.getDimensionPixelSize(R.styleable.JoystickView_thumbstickRadius, DEFAULT_THUMBSTICK_RADIUS);
+            mAutoRecenterThumbstick = styledAttributes.getBoolean(R.styleable.JoystickView_autoRecenterThumbstick, DEFAULT_AUTO_RECENTER_THUMBSTICK);
+            mEnabled                = styledAttributes.getBoolean(R.styleable.JoystickView_enabled,                DEFAULT_ENABLED);
+            mDoubleTapToPress       = styledAttributes.getBoolean(R.styleable.JoystickView_doubleTapToPress,       DEFAULT_DOUBLE_TAP_TO_PRESS);mBackgroundColor        = styledAttributes.getColor(R.styleable.JoystickView_backgroundColor, DEFAULT_BACKGROUND_COLOR);
+            mAutoRecenterDelay      = styledAttributes.getInteger(R.styleable.JoystickView_autoRecenterDelay, DEFAULT_AUTO_RECENTER_DELAY);
+            mPhysicalThreshold      = styledAttributes.getInteger(R.styleable.JoystickView_physicalThreshold, DEFAULT_PHYSICAL_THRESHOLD);
+            mGiveThreshold          = styledAttributes.getInteger(R.styleable.JoystickView_giveThreshold,     DEFAULT_GIVE_THRESHOLD);
+            mDoubleTapDelay         = styledAttributes.getInteger(R.styleable.JoystickView_doubleTapDelay,    DEFAULT_DOUBLE_TAP_DELAY);
+            mDoubleTapError         = styledAttributes.getInteger(R.styleable.JoystickView_doubleTapError,    DEFAULT_DOUBLE_TAP_ERROR);
+            mRefreshRate            = styledAttributes.getInteger(R.styleable.JoystickView_refreshRate,       DEFAULT_REFRESH_RATE);
+            mBackgroundColor        = styledAttributes.getColor(R.styleable.JoystickView_backgroundColor, DEFAULT_BACKGROUND_COLOR);
+            mBorderColor            = styledAttributes.getColor(R.styleable.JoystickView_borderColor,     DEFAULT_BORDER_COLOR);
+        } finally {
+            styledAttributes.recycle();
+        }
     }
 
-    /* GETTERS
-     * TODO: Determine whether getters for attribute values are needed or if there is a built-in way
-     *
-     * getXPos
-     * getYPos
-     * getDistanceFromCenter
-     * getAngle
-     * getAngle(boolean clockwise) - option to make counter-clockwise the positive direction
+    /*
+    GETTERS
+    TODO: Determine whether getters for attribute values are needed or if there is a built-in way
      */
+
+    /**
+     * @return the x-axis value of the thumbstick
+     */
+    public int getXPos(){
+         return xPos;
+    }
+
+    /**
+     * @return the y-axis value of the thumbstick
+     */
+    public int getYPos(){
+         return yPos;
+    }
+
+
+    /**
+     * @return the distance the thumbstick is from the center of the joystick
+     */
+    public int getDistanceFromCenter(){
+         return distanceFromCenter;
+    }
+
+    /**
+     * @return the angle (relative clockwise) the thumbstick is at
+     */
+    public int getAngle(){
+         return angle;
+    }
+
+    /**
+     * @param clockwise option to make counter-clockwise the relative direction
+     * @return the angle the thumbstick is at based off the parameter
+     */
+    public int getAngle(boolean clockwise){
+         if (clockwise) {
+             return angle;
+         } else {
+             return 360 - angle;
+         }
+    }
 
     /* SETTERS
      * TODO: Determine whether setters for attribute values are need or if there is a built-in way
