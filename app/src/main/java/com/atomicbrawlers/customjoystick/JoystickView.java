@@ -2,9 +2,12 @@ package com.atomicbrawlers.customjoystick;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Paint.Style;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.ViewTreeObserver;
 
 import static android.R.attr.direction;
 
@@ -104,6 +107,9 @@ public class JoystickView extends View /*implements Runnable*/{
      */
     private final int DEFAULT_BORDER_SIZE = 10;
 
+    //TODO: Javadoc this
+    private final int DEFUALT_THUMBSTICK_COLOR = 0;
+
     /**
      * Default thumbstick radius
      */
@@ -183,6 +189,9 @@ public class JoystickView extends View /*implements Runnable*/{
      * from the edge of the background.
      */
     private int mBorderSize;
+
+    //TODO: Javadoc this
+    private int mThumbstickColor;
 
     /**
      * Radius in pixels of the thumbstick
@@ -276,13 +285,14 @@ public class JoystickView extends View /*implements Runnable*/{
      */
     private int angle;
 
+    //TODO: Javadoc this
+    private int layoutSize;
+
     /*
      DRAWING VARIABLES
      Used to draw the image of the joystick
      */
-    private Paint mPaintBackground;
-    private Paint mPaintBorder;
-    private Paint mPaintThumbstick;
+    private Paint painter;
 
     public JoystickView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -292,9 +302,7 @@ public class JoystickView extends View /*implements Runnable*/{
         //this.forceHasOverlappingRendering(false); //Saves processing power
 
         //paint objects for drawing in onDraw
-        mPaintBackground = new Paint();
-        mPaintBorder     = new Paint();
-        mPaintThumbstick = new Paint();
+        painter = new Paint();
 
         //get the attributes specified in attrs.xml
         TypedArray styledAttributes = context.getTheme().obtainStyledAttributes(attrs,
@@ -316,8 +324,56 @@ public class JoystickView extends View /*implements Runnable*/{
             mRefreshRate            = styledAttributes.getInteger(R.styleable.JoystickView_refreshRate,       DEFAULT_REFRESH_RATE);
             mBackgroundColor        = styledAttributes.getColor(R.styleable.JoystickView_backgroundColor, DEFAULT_BACKGROUND_COLOR);
             mBorderColor            = styledAttributes.getColor(R.styleable.JoystickView_borderColor,     DEFAULT_BORDER_COLOR);
+            mThumbstickColor        = styledAttributes.getColor(R.styleable.JoystickView_thumbstickColor, DEFUALT_THUMBSTICK_COLOR);
         } finally {
             styledAttributes.recycle();
+        }
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas){
+        //represents half the width of the layout
+        int halfLayoutWidth = layoutSize / 2;
+
+        //Prepare the painter
+        painter.setStyle(Style.FILL);
+        painter.setAntiAlias(true);
+
+        //radius of the circle is half the size of the layout minus half the size of the padding
+        int radius = halfLayoutWidth - (mCanvasPadding / 2); //background radius
+
+        //Draw the joystick border
+        painter.setColor(mBorderColor);
+        canvas.drawCircle(halfLayoutWidth, halfLayoutWidth, radius, painter);
+
+        //Draw the joystick background
+        painter.setColor(mBackgroundColor);
+        canvas.drawCircle(halfLayoutWidth, halfLayoutWidth, (radius - mBorderSize), painter);
+
+        //Draw the thumbstick
+        painter.setColor(mThumbstickColor);
+        canvas.drawCircle(halfLayoutWidth, halfLayoutWidth, mThumbstickRadius, painter);
+    }
+
+    //TODO: Make this process smoother - currently it is glitchy and I don't fully understand it
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        // setting the measured values to resize the view to a certain width and height
+        int size = Math.min(measure(widthMeasureSpec), measure(heightMeasureSpec));
+        setMeasuredDimension(size, size);
+
+        layoutSize = size;
+    }
+
+
+    private int measure(int measureSpec) {
+        if (MeasureSpec.getMode(measureSpec) == MeasureSpec.UNSPECIFIED) {
+            // if no bounds are specified return a default size (200)
+            return DEFAULT_LAYOUT_SIZE;
+        } else {
+            // As you want to fill the available space
+            // always return the full available bounds.
+            return MeasureSpec.getSize(measureSpec);
         }
     }
 

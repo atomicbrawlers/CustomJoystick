@@ -12,6 +12,7 @@
         <attr name="backgroundColor"        format="color" />
         <attr name="borderColor"            format="color" />
         <attr name="borderSize"             format="dimension" />
+        <attr name="thumbstickColor"        format="color" />
         <attr name="thumbstickRadius"       format="dimension" />
         <attr name="autoRecenterThumbstick" format="boolean" />
         <attr name="autoRecenterDelay"      format="integer" />

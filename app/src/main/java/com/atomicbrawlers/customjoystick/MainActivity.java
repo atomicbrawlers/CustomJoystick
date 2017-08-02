@@ -14,7 +14,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        myView = (FirstCustomView) findViewById(R.id.custView);
+        //myView = (FirstCustomView) findViewById(R.id.custView);
     }
 
     public void buttonPressed(View view){
