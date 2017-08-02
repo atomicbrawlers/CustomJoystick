@@ -6,10 +6,13 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
 import static android.R.attr.direction;
+import static android.R.attr.x;
+import static android.os.Build.VERSION_CODES.M;
 
 /**
  * Created by Matt on 7/31/2017.
@@ -36,7 +39,7 @@ import static android.R.attr.direction;
  * @author Matthew Jordan
  */
 
-public class JoystickView extends View /*implements Runnable*/{
+public class JoystickView extends View implements Runnable{
 
     /* ATTRIBUTES
      * layoutSize - The size of the view/layout; must be a square; value will be used to change
@@ -277,7 +280,7 @@ public class JoystickView extends View /*implements Runnable*/{
     /**
      * How from the the center the thumbstick is
      */
-    private int distanceFromCenter; //acts as "strength" in a sense; useful for diagonal movements
+    private float distanceFromCenter; //acts as "strength" in a sense; useful for diagonal movements
 
     /**
      * Angle of the thumbstick.<!-- --> Positive x-axis is zero.<!-- --> Default angle is
@@ -287,12 +290,31 @@ public class JoystickView extends View /*implements Runnable*/{
 
     //TODO: Javadoc this
     private int layoutSize;
+    private int center;
+    private float joystickRadius;
+    private int relativePosX;
+    private int relativePosY;
 
     /*
      DRAWING VARIABLES
      Used to draw the image of the joystick
      */
     private Paint painter;
+
+    private Thread mThread = new Thread(this);
+
+    public void run() {
+        while (!Thread.interrupted()) {
+            System.out.println("X: " + xPos + "  Y: " + yPos);
+            System.out.println("distance from center: " + distanceFromCenter);
+            System.out.println("Joystick Radius: " + joystickRadius);
+            try {
+                Thread.sleep(DEFAULT_REFRESH_RATE);
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+    }
 
     public JoystickView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -328,6 +350,28 @@ public class JoystickView extends View /*implements Runnable*/{
         } finally {
             styledAttributes.recycle();
         }
+
+        center = mLayoutSize / 2;
+        xPos = center;
+        yPos = center;
+        joystickRadius = (float) (mLayoutSize - mCanvasPadding) / 2;
+        relativePosX = center;
+        relativePosY = center;
+
+        mThread.start();
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldW, int oldH) {
+        super.onSizeChanged(w, h, oldW, oldH);
+
+        center = layoutSize / 2;
+        xPos = center;
+        yPos = center;
+        relativePosX = center;
+        relativePosY = center;
+
+        joystickRadius = (float) (Math.min(w, h) - mCanvasPadding) / 2;
     }
 
     @Override
@@ -352,7 +396,16 @@ public class JoystickView extends View /*implements Runnable*/{
 
         //Draw the thumbstick
         painter.setColor(mThumbstickColor);
-        canvas.drawCircle(halfLayoutWidth, halfLayoutWidth, mThumbstickRadius, painter);
+     /*   if (distanceFromCenter > joystickRadius){
+            if (Math.abs(relativePosX) < joystickRadius) {
+                canvas.drawCircle(xPos, , mThumbstickRadius, painter);
+            } else if (Math.abs(relativePosY) < joystickRadius) {
+                canvas.drawCircle(relativePosX, yPos, mThumbstickRadius, painter);
+            }
+        } else {
+
+        } */
+        canvas.drawCircle(xPos, yPos, mThumbstickRadius, painter);
     }
 
     //TODO: Make this process smoother - currently it is glitchy and I don't fully understand it
@@ -375,6 +428,26 @@ public class JoystickView extends View /*implements Runnable*/{
             // always return the full available bounds.
             return MeasureSpec.getSize(measureSpec);
         }
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        xPos = (int) event.getX();
+        yPos = (int) event.getY();
+
+        relativePosX = xPos - center;
+        relativePosY = yPos - center;
+
+        distanceFromCenter = (float) Math.sqrt((float)(Math.pow(relativePosX,2) + Math.pow(relativePosY,2)));
+
+        if (distanceFromCenter > joystickRadius) {
+            xPos = (int) ((xPos - center) * joystickRadius / distanceFromCenter + center);
+            yPos = (int) ((yPos - center) * joystickRadius / distanceFromCenter + center);
+        }
+
+        invalidate();
+
+        return true;
     }
 
     /*
@@ -400,7 +473,7 @@ public class JoystickView extends View /*implements Runnable*/{
     /**
      * @return the distance the thumbstick is from the center of the joystick
      */
-    public int getDistanceFromCenter(){
+    public float getDistanceFromCenter(){
          return distanceFromCenter;
     }
 
