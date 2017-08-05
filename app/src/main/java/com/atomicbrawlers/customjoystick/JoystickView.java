@@ -5,14 +5,18 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
+import android.graphics.Rect;
+import android.graphics.Region;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
 import static android.R.attr.direction;
+import static android.R.attr.radius;
 import static android.R.attr.x;
 import static android.os.Build.VERSION_CODES.M;
+import static android.provider.ContactsContract.CommonDataKinds.StructuredPostal.REGION;
 
 /**
  * Created by Matt on 7/31/2017.
@@ -39,6 +43,8 @@ import static android.os.Build.VERSION_CODES.M;
  * @author Matthew Jordan
  */
 
+//TODO: Figure out another way to avoid the thumbstick clipping other than android:clipChildren="false" in the constraint layout
+
 public class JoystickView extends View implements Runnable{
 
     /* ATTRIBUTES
@@ -46,7 +52,7 @@ public class JoystickView extends View implements Runnable{
      *      layout_width and layout_height to the same value
      * canvasPadding - The size of the padding around the painted object; the edge of the
      *      layout/view will be this far away from the edge of the painted object
-     * backgroundColor - The color of the background; TODO: Check if I can use the default android implementation of this
+     * joystickColor - The color of the background; TODO: Check if I can use the default android implementation of this
      * borderColor - The color of the border of the background
      * borderSize - The size/amount that the border sticks out over the background
      * thumbstickRadius - The radius of the thumbstick; the object that the user moves around
@@ -98,7 +104,7 @@ public class JoystickView extends View implements Runnable{
     /**
      * Default background color
      */
-    private final int DEFAULT_BACKGROUND_COLOR = 0;
+    private final int DEFAULT_JOYSTICK_COLOR = 0;
 
     /**
      * Default border color
@@ -180,7 +186,7 @@ public class JoystickView extends View implements Runnable{
     /**
      * Color of the joystick background
      */
-    private int mBackgroundColor;
+    private int mJoystickColor;
 
     /**
      * Color of the joystick border
@@ -337,14 +343,14 @@ public class JoystickView extends View implements Runnable{
             mThumbstickRadius       = styledAttributes.getDimensionPixelSize(R.styleable.JoystickView_thumbstickRadius, DEFAULT_THUMBSTICK_RADIUS);
             mAutoRecenterThumbstick = styledAttributes.getBoolean(R.styleable.JoystickView_autoRecenterThumbstick, DEFAULT_AUTO_RECENTER_THUMBSTICK);
             mEnabled                = styledAttributes.getBoolean(R.styleable.JoystickView_enabled,                DEFAULT_ENABLED);
-            mDoubleTapToPress       = styledAttributes.getBoolean(R.styleable.JoystickView_doubleTapToPress,       DEFAULT_DOUBLE_TAP_TO_PRESS);mBackgroundColor        = styledAttributes.getColor(R.styleable.JoystickView_backgroundColor, DEFAULT_BACKGROUND_COLOR);
+            mDoubleTapToPress       = styledAttributes.getBoolean(R.styleable.JoystickView_doubleTapToPress,       DEFAULT_DOUBLE_TAP_TO_PRESS);
             mAutoRecenterDelay      = styledAttributes.getInteger(R.styleable.JoystickView_autoRecenterDelay, DEFAULT_AUTO_RECENTER_DELAY);
             mPhysicalThreshold      = styledAttributes.getInteger(R.styleable.JoystickView_physicalThreshold, DEFAULT_PHYSICAL_THRESHOLD);
             mGiveThreshold          = styledAttributes.getInteger(R.styleable.JoystickView_giveThreshold,     DEFAULT_GIVE_THRESHOLD);
             mDoubleTapDelay         = styledAttributes.getInteger(R.styleable.JoystickView_doubleTapDelay,    DEFAULT_DOUBLE_TAP_DELAY);
             mDoubleTapError         = styledAttributes.getInteger(R.styleable.JoystickView_doubleTapError,    DEFAULT_DOUBLE_TAP_ERROR);
             mRefreshRate            = styledAttributes.getInteger(R.styleable.JoystickView_refreshRate,       DEFAULT_REFRESH_RATE);
-            mBackgroundColor        = styledAttributes.getColor(R.styleable.JoystickView_backgroundColor, DEFAULT_BACKGROUND_COLOR);
+            mJoystickColor          = styledAttributes.getColor(R.styleable.JoystickView_joystickColor,   DEFAULT_JOYSTICK_COLOR);
             mBorderColor            = styledAttributes.getColor(R.styleable.JoystickView_borderColor,     DEFAULT_BORDER_COLOR);
             mThumbstickColor        = styledAttributes.getColor(R.styleable.JoystickView_thumbstickColor, DEFUALT_THUMBSTICK_COLOR);
         } finally {
@@ -391,20 +397,12 @@ public class JoystickView extends View implements Runnable{
         canvas.drawCircle(halfLayoutWidth, halfLayoutWidth, radius, painter);
 
         //Draw the joystick background
-        painter.setColor(mBackgroundColor);
+        painter.setColor(mJoystickColor);
         canvas.drawCircle(halfLayoutWidth, halfLayoutWidth, (radius - mBorderSize), painter);
 
+        //TODO: This is the only circle required to be redrawn, see if I can take it out of onDraw
         //Draw the thumbstick
         painter.setColor(mThumbstickColor);
-     /*   if (distanceFromCenter > joystickRadius){
-            if (Math.abs(relativePosX) < joystickRadius) {
-                canvas.drawCircle(xPos, , mThumbstickRadius, painter);
-            } else if (Math.abs(relativePosY) < joystickRadius) {
-                canvas.drawCircle(relativePosX, yPos, mThumbstickRadius, painter);
-            }
-        } else {
-
-        } */
         canvas.drawCircle(xPos, yPos, mThumbstickRadius, painter);
     }
 
@@ -440,9 +438,10 @@ public class JoystickView extends View implements Runnable{
 
         distanceFromCenter = (float) Math.sqrt((float)(Math.pow(relativePosX,2) + Math.pow(relativePosY,2)));
 
+        //Math to make the thumbstick not be drawn outside the bounds of the joystick
         if (distanceFromCenter > joystickRadius) {
-            xPos = (int) ((xPos - center) * joystickRadius / distanceFromCenter + center);
-            yPos = (int) ((yPos - center) * joystickRadius / distanceFromCenter + center);
+            xPos = (int) (relativePosX * joystickRadius / distanceFromCenter + center);
+            yPos = (int) (relativePosY * joystickRadius / distanceFromCenter + center);
         }
 
         invalidate();

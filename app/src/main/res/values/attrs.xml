@@ -9,7 +9,7 @@
     <declare-styleable name="JoystickView">
         <attr name="layoutSize"             format="dimension" />
         <attr name="canvasPadding"          format="dimension" />
-        <attr name="backgroundColor"        format="color" />
+        <attr name="joystickColor"          format="color" />
         <attr name="borderColor"            format="color" />
         <attr name="borderSize"             format="dimension" />
         <attr name="thumbstickColor"        format="color" />
@@ -31,7 +31,7 @@
     *      layout_width and layout_height to the same value
     * canvasPadding - The size of the padding around the painted object; the edge of the
     *      layout/view will be this far away from the edge of the painted object
-    * backgroundColor - The color of the background; TODO: Check if I can use the default android implementation of this
+    * joystickColor - The color of the background; TODO: Check if I can use the default android implementation of this
     * borderColor - The color of the border of the background
     * borderSize - The size/amount that the border sticks out over the background
     * thumbstickRadius - The radius of the thumbstick; the object that the user moves around
