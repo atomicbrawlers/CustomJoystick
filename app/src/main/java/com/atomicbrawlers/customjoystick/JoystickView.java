@@ -5,18 +5,9 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
-import android.graphics.Rect;
-import android.graphics.Region;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewTreeObserver;
-
-import static android.R.attr.direction;
-import static android.R.attr.radius;
-import static android.R.attr.x;
-import static android.os.Build.VERSION_CODES.M;
-import static android.provider.ContactsContract.CommonDataKinds.StructuredPostal.REGION;
 
 /**
  * Created by Matt on 7/31/2017.
@@ -43,16 +34,19 @@ import static android.provider.ContactsContract.CommonDataKinds.StructuredPostal
  * @author Matthew Jordan
  */
 
-//TODO: Figure out another way to avoid the thumbstick clipping other than android:clipChildren="false" in the constraint layout
+//TODO: Figure out another way to avoid the thumbstick clipping other than android:clipChildren="false" in the layout of the activity
+//TODO: Add ratio option for thumbstick to automatically adjust size - and best place to put this in the code
+//TODO: Figure out "mEnabled"; whether I set an onClick listener or just fit in the code somewhere (onTouch/onTouchEvent?)
+//TODO: Add percentage values for how far the x and y axes are
 
-public class JoystickView extends View implements Runnable{
+public class JoystickView extends View implements Runnable {
 
     /* ATTRIBUTES
      * layoutSize - The size of the view/layout; must be a square; value will be used to change
      *      layout_width and layout_height to the same value
      * canvasPadding - The size of the padding around the painted object; the edge of the
      *      layout/view will be this far away from the edge of the painted object
-     * joystickColor - The color of the background; TODO: Check if I can use the default android implementation of this
+     * joystickColor - The color of the background
      * borderColor - The color of the border of the background
      * borderSize - The size/amount that the border sticks out over the background
      * thumbstickRadius - The radius of the thumbstick; the object that the user moves around
@@ -102,7 +96,7 @@ public class JoystickView extends View implements Runnable{
     private final int DEFAULT_CANVAS_PADDING = 10;
 
     /**
-     * Default background color
+     * Default joystick background color
      */
     private final int DEFAULT_JOYSTICK_COLOR = 0;
 
@@ -116,7 +110,9 @@ public class JoystickView extends View implements Runnable{
      */
     private final int DEFAULT_BORDER_SIZE = 10;
 
-    //TODO: Javadoc this
+    /**
+     * Default thumbstick color
+     */
     private final int DEFUALT_THUMBSTICK_COLOR = 0;
 
     /**
@@ -199,7 +195,9 @@ public class JoystickView extends View implements Runnable{
      */
     private int mBorderSize;
 
-    //TODO: Javadoc this
+    /**
+     * Color of the thumbstick
+     */
     private int mThumbstickColor;
 
     /**
@@ -245,7 +243,7 @@ public class JoystickView extends View implements Runnable{
     /**
      * State for whether or not the joystick is interact-able (enabled)
      */
-    private boolean mEnabled; //MAYBE
+    private boolean mEnabled;
 
     /**
      * State for whether or not the user can double tap the joystick to act a button press
@@ -276,12 +274,12 @@ public class JoystickView extends View implements Runnable{
     /**
      * Value of the x-axis position of the thumbstick
      */
-    private int xPos;
+    private int posX;
 
     /**
      * Value of the y-axis position of the thumbstick
      */
-    private int yPos;
+    private int posY;
 
     /**
      * How from the the center the thumbstick is
@@ -301,17 +299,14 @@ public class JoystickView extends View implements Runnable{
     private int relativePosX;
     private int relativePosY;
 
-    /*
-     DRAWING VARIABLES
-     Used to draw the image of the joystick
-     */
+    //Used to draw the image of the joystick
     private Paint painter;
 
     private Thread mThread = new Thread(this);
 
     public void run() {
         while (!Thread.interrupted()) {
-            System.out.println("X: " + xPos + "  Y: " + yPos);
+            System.out.println("X: " + posX + "  Y: " + posY);
             System.out.println("distance from center: " + distanceFromCenter);
             System.out.println("Joystick Radius: " + joystickRadius);
             try {
@@ -329,10 +324,10 @@ public class JoystickView extends View implements Runnable{
         //Overlapping rendering is for when a canvas is rendered opaquely on top of another canvas
         //this.forceHasOverlappingRendering(false); //Saves processing power
 
-        //paint objects for drawing in onDraw
+        //Paint objects for drawing in onDraw
         painter = new Paint();
 
-        //get the attributes specified in attrs.xml
+        //Get the attributes specified in attrs.xml
         TypedArray styledAttributes = context.getTheme().obtainStyledAttributes(attrs,
                 R.styleable.JoystickView, 0, 0);
 
@@ -358,8 +353,8 @@ public class JoystickView extends View implements Runnable{
         }
 
         center = mLayoutSize / 2;
-        xPos = center;
-        yPos = center;
+        posX = center;
+        posY = center;
         joystickRadius = (float) (mLayoutSize - mCanvasPadding) / 2;
         relativePosX = center;
         relativePosY = center;
@@ -372,8 +367,8 @@ public class JoystickView extends View implements Runnable{
         super.onSizeChanged(w, h, oldW, oldH);
 
         center = layoutSize / 2;
-        xPos = center;
-        yPos = center;
+        posX = center;
+        posY = center;
         relativePosX = center;
         relativePosY = center;
 
@@ -382,14 +377,14 @@ public class JoystickView extends View implements Runnable{
 
     @Override
     protected void onDraw(Canvas canvas){
-        //represents half the width of the layout
+        //Represents half the width of the layout
         int halfLayoutWidth = layoutSize / 2;
 
         //Prepare the painter
         painter.setStyle(Style.FILL);
         painter.setAntiAlias(true);
 
-        //radius of the circle is half the size of the layout minus half the size of the padding
+        //Radius of the circle is half the size of the layout minus half the size of the padding
         int radius = halfLayoutWidth - (mCanvasPadding / 2); //background radius
 
         //Draw the joystick border
@@ -403,7 +398,7 @@ public class JoystickView extends View implements Runnable{
         //TODO: This is the only circle required to be redrawn, see if I can take it out of onDraw
         //Draw the thumbstick
         painter.setColor(mThumbstickColor);
-        canvas.drawCircle(xPos, yPos, mThumbstickRadius, painter);
+        canvas.drawCircle(posX, posY, mThumbstickRadius, painter);
     }
 
     //TODO: Make this process smoother - currently it is glitchy and I don't fully understand it
@@ -413,9 +408,9 @@ public class JoystickView extends View implements Runnable{
         int size = Math.min(measure(widthMeasureSpec), measure(heightMeasureSpec));
         setMeasuredDimension(size, size);
 
+        //TODO: Rework "layoutSize" and figure out how to manage inputting the size of the view; maybe get rid of it?
         layoutSize = size;
     }
-
 
     private int measure(int measureSpec) {
         if (MeasureSpec.getMode(measureSpec) == MeasureSpec.UNSPECIFIED) {
@@ -428,23 +423,32 @@ public class JoystickView extends View implements Runnable{
         }
     }
 
-    @Override
+    @Override //Runs when user is touching the View
     public boolean onTouchEvent(MotionEvent event) {
-        xPos = (int) event.getX();
-        yPos = (int) event.getY();
+        if (event.getAction() == MotionEvent.ACTION_UP) { //User releases their touch
+            if (mAutoRecenterThumbstick){
+                //TODO: Figure out how to add the autoRecenterDelay in here; Does it need a delay?
+                posX = center;
+                posY = center;
+            }
+            //TODO: Consider looking for double tap here?
+        } else {
+            posX = (int) event.getX();
+            posY = (int) event.getY();
+        }
 
-        relativePosX = xPos - center;
-        relativePosY = yPos - center;
+        relativePosX = posX - center;
+        relativePosY = posY - center;
 
-        distanceFromCenter = (float) Math.sqrt((float)(Math.pow(relativePosX,2) + Math.pow(relativePosY,2)));
+        distanceFromCenter = (float) Math.sqrt((float) (Math.pow(relativePosX, 2) + Math.pow(relativePosY, 2)));
 
         //Math to make the thumbstick not be drawn outside the bounds of the joystick
         if (distanceFromCenter > joystickRadius) {
-            xPos = (int) (relativePosX * joystickRadius / distanceFromCenter + center);
-            yPos = (int) (relativePosY * joystickRadius / distanceFromCenter + center);
+            posX = (int) (relativePosX * joystickRadius / distanceFromCenter + center);
+            posY = (int) (relativePosY * joystickRadius / distanceFromCenter + center);
         }
 
-        invalidate();
+        invalidate(); //Redraws everything
 
         return true;
     }
@@ -458,16 +462,15 @@ public class JoystickView extends View implements Runnable{
      * @return the x-axis value of the thumbstick
      */
     public int getXPos(){
-         return xPos;
+         return posX;
     }
 
     /**
      * @return the y-axis value of the thumbstick
      */
     public int getYPos(){
-         return yPos;
+         return posY;
     }
-
 
     /**
      * @return the distance the thumbstick is from the center of the joystick
